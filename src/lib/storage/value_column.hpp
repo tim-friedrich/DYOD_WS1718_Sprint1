@@ -13,6 +13,8 @@ namespace opossum {
 template <typename T>
 class ValueColumn : public BaseColumn {
  public:
+  ValueColumn();
+
   // return the value at a certain position. If you want to write efficient operators, back off!
   const AllTypeVariant operator[](const size_t i) const override;
 
@@ -23,7 +25,7 @@ class ValueColumn : public BaseColumn {
   size_t size() const override;
 
  protected:
-  // Implementation goes here
+  std::vector<T> _content;
 };
 
 }  // namespace opossum
