@@ -49,4 +49,19 @@ TEST_F(StorageStorageManagerTest, HasTable) {
   auto& sm = StorageManager::get();
   EXPECT_EQ(sm.has_table("first_table"), true);
 }
+
+TEST_F(StorageStorageManagerTest, TwiceGetIsSameObject) {
+  auto& sm1 = StorageManager::get();
+  auto& sm2 = StorageManager::get();
+
+  EXPECT_EQ(&sm1, &sm2);
+}
+
+TEST_F(StorageStorageManagerTest, AfterResetDifferentObject) {
+  auto& sm1 = StorageManager::get();
+  StorageManager::reset();
+  auto& sm2 = StorageManager::get();
+
+  EXPECT_NE(&sm1, &sm2);
+}
 }  // namespace opossum
