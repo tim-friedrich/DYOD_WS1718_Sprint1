@@ -80,6 +80,14 @@ class Table : private Noncopyable {
   void create_new_chunk();
 
  protected:
-  // Implementation goes here
+  const uint32_t _max_chunk_size;
+  std::vector<std::shared_ptr<Chunk>> _chunks;
+  std::vector<std::string> _column_names;
+  std::vector<std::string> _column_types;
+
+ protected:
+  bool _chunk_size_unlimited() const;
+  Chunk& _get_chunk(ChunkID chunk_id) const;
+  std::shared_ptr<Chunk> _get_insert_chunk();
 };
 }  // namespace opossum
