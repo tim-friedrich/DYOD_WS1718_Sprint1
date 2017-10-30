@@ -9,12 +9,7 @@
 
 namespace opossum {
 
-// StorageManager StorageManager::_instance = std::make_unique<StorageManager>();
-
-StorageManager& StorageManager::get() {
-  auto& ptr = StorageManager::_instance_ptr();
-  return *ptr;
-}
+StorageManager& StorageManager::get() { return *StorageManager::_instance_ptr(); }
 
 void StorageManager::add_table(const std::string& name, std::shared_ptr<Table> table) { this->_tables[name] = table; }
 
@@ -43,9 +38,8 @@ void StorageManager::print(std::ostream& out) const {
 }
 
 void StorageManager::reset() {
-  auto& ptr1 = StorageManager::_instance_ptr();
-  auto ptr2 = std::make_unique<StorageManager>();
-  std::swap(ptr1, ptr2);
+  auto& ptr = StorageManager::_instance_ptr();
+  ptr = std::make_unique<StorageManager>();
 }
 
 void StorageManager::_print_table(std::ostream& out, const std::string& name, std::shared_ptr<Table> table) const {
