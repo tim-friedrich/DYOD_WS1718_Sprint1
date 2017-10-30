@@ -27,11 +27,12 @@ void Table::add_column_definition(const std::string& name, const std::string& ty
 }
 
 void Table::add_column(const std::string& name, const std::string& type) {
+  DebugAssert(this->row_count() == 0 && this->chunk_count() == 1,
+              "adding column only works on empty tables - padding with NULL values is not supported (yet)");
   this->add_column_definition(name, type);
-  for (auto chunk : this->_chunks) {
-    auto column = make_shared_by_column_type<BaseColumn, ValueColumn>(type);
-    chunk->add_column(column);
-  }
+
+  auto column = make_shared_by_column_type<BaseColumn, ValueColumn>(type);
+  this->_chunks.back()->add_column(column);
 }
 
 void Table::append(std::vector<AllTypeVariant> values) {
