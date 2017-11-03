@@ -79,6 +79,9 @@ class Table : private Noncopyable {
   // creates a new chunk and appends it
   void create_new_chunk();
 
+  // compresses a ValueColumn into a DictionaryColumn
+  void compress_chunk(ChunkID chunk_id);
+
  protected:
   const uint32_t _max_chunk_size;
   std::vector<std::shared_ptr<Chunk>> _chunks;
