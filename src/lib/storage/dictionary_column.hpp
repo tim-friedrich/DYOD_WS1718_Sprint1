@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 #include "all_type_variant.hpp"
+#include "simple_attribute_vector.hpp"
 #include "type_cast.hpp"
 #include "types.hpp"
 
@@ -27,7 +28,9 @@ class DictionaryColumn : public BaseColumn {
    * Creates a Dictionary column from a given value column.
    */
   explicit DictionaryColumn(const std::shared_ptr<BaseColumn>& base_column) {
+    _dictionary = std::make_shared<std::vector<T>>();
     _build_dictionary(base_column);
+    _attribute_vector = std::make_shared<SimpleAttributeVector>(base_column->size());
     _build_attribute_vector(base_column);
   }
 
@@ -84,7 +87,16 @@ class DictionaryColumn : public BaseColumn {
   }
 
   void _build_attribute_vector(const std::shared_ptr<BaseColumn>& base_column) {
-    // TODO
+    for (size_t index = 0; index < base_column->size(); ++index) {
+      const T& value = type_cast<T>((*base_column)[index]);
+      _attribute_vector->set(index, _to_value_id(value));
+    }
+  }
+
+  const ValueID _to_value_id(const T& value) const {
+    const auto found = std::lower_bound(_dictionary->cbegin(), _dictionary->cend(), value);
+    DebugAssert(found != _dictionary->cend(), "value not present in dictionary");
+    return ValueID(found - _dictionary->cbegin());
   }
 };
 
