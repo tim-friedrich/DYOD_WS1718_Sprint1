@@ -1,11 +1,13 @@
 #pragma once
 
+#include <algorithm>
+#include <limits>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-#include "type_cast.hpp"
 #include "all_type_variant.hpp"
+#include "type_cast.hpp"
 #include "types.hpp"
 
 namespace opossum {
@@ -24,59 +26,66 @@ class DictionaryColumn : public BaseColumn {
   /**
    * Creates a Dictionary column from a given value column.
    */
-  explicit DictionaryColumn(const std::shared_ptr<BaseColumn>& base_column){
-    for(size_t index=0; index < base_column->size(); index++){
-        _dictionary->push_back(type_cast<T>((*base_column)[index]));
+  explicit DictionaryColumn(const std::shared_ptr<BaseColumn>& base_column) {
+    _build_dictionary(base_column);
+    _build_attribute_vector(base_column);
+  }
+
+  // return the value at a certain position. If you want to write efficient operators, back off!
+  const AllTypeVariant operator[](const size_t i) const override { throw new std::runtime_error("implement"); }
+
+  // return the value at a certain position.
+  const T get(const size_t i) const { throw new std::runtime_error("implement"); }
+
+  // dictionary columns are immutable
+  void append(const AllTypeVariant&) override {}
+
+  // returns an underlying dictionary
+  std::shared_ptr<const std::vector<T>> dictionary() const { throw new std::runtime_error("implement"); }
+
+  // returns an underlying data structure
+  std::shared_ptr<const BaseAttributeVector> attribute_vector() const { throw new std::runtime_error("implement"); }
+
+  // return the value represented by a given ValueID
+  const T& value_by_value_id(ValueID value_id) const { throw new std::runtime_error("implement"); }
+
+  // returns the first value ID that refers to a value >= the search value
+  // returns INVALID_VALUE_ID if all values are smaller than the search value
+  ValueID lower_bound(T value) const { throw new std::runtime_error("implement"); }
+
+  // same as lower_bound(T), but accepts an AllTypeVariant
+  ValueID lower_bound(const AllTypeVariant& value) const { throw new std::runtime_error("implement"); }
+
+  // returns the first value ID that refers to a value > the search value
+  // returns INVALID_VALUE_ID if all values are smaller than or equal to the search value
+  ValueID upper_bound(T value) const { throw new std::runtime_error("implement"); }
+
+  // same as upper_bound(T), but accepts an AllTypeVariant
+  ValueID upper_bound(const AllTypeVariant& value) const { throw new std::runtime_error("implement"); }
+
+  // return the number of unique_values (dictionary entries)
+  size_t unique_values_count() const { throw new std::runtime_error("implement"); }
+
+  // return the number of entries
+  size_t size() const override { throw new std::runtime_error("implement"); }
+
+ protected:
+  std::shared_ptr<std::vector<T>> _dictionary;
+  std::shared_ptr<BaseAttributeVector> _attribute_vector;
+
+ protected:
+  void _build_dictionary(const std::shared_ptr<BaseColumn>& base_column) {
+    for (size_t index = 0; index < base_column->size(); ++index) {
+      _dictionary->push_back(type_cast<T>((*base_column)[index]));
     }
     std::sort(_dictionary->begin(), _dictionary->end());
     _dictionary->erase(std::unique(_dictionary->begin(), _dictionary->end()), _dictionary->end());
     _dictionary->shrink_to_fit();
   }
 
-  // SEMINAR INFORMATION: Since most of these methods depend on the template parameter, you will have to implement
-  // the DictionaryColumn in this file. Replace the method signatures with actual implementations.
-
-  // return the value at a certain position. If you want to write efficient operators, back off!
-  const AllTypeVariant operator[](const size_t i) const override;
-
-  // return the value at a certain position.
-  const T get(const size_t i) const;
-
-  // dictionary columns are immutable
-  void append(const AllTypeVariant&) override;
-
-  // returns an underlying dictionary
-  std::shared_ptr<const std::vector<T>> dictionary() const;
-
-  // returns an underlying data structure
-  std::shared_ptr<const BaseAttributeVector> attribute_vector() const;
-
-  // return the value represented by a given ValueID
-  const T& value_by_value_id(ValueID value_id) const;
-
-  // returns the first value ID that refers to a value >= the search value
-  // returns INVALID_VALUE_ID if all values are smaller than the search value
-  ValueID lower_bound(T value) const;
-
-  // same as lower_bound(T), but accepts an AllTypeVariant
-  ValueID lower_bound(const AllTypeVariant& value) const;
-
-  // returns the first value ID that refers to a value > the search value
-  // returns INVALID_VALUE_ID if all values are smaller than or equal to the search value
-  ValueID upper_bound(T value) const;
-
-  // same as upper_bound(T), but accepts an AllTypeVariant
-  ValueID upper_bound(const AllTypeVariant& value) const;
-
-  // return the number of unique_values (dictionary entries)
-  size_t unique_values_count() const;
-
-  // return the number of entries
-  size_t size() const override;
-
- protected:
-  std::shared_ptr<std::vector<T>> _dictionary;
-  std::shared_ptr<BaseAttributeVector> _attribute_vector;
+  void _build_attribute_vector(const std::shared_ptr<BaseColumn>& base_column) {
+    // TODO
+  }
 };
 
 }  // namespace opossum
