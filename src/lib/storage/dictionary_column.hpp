@@ -4,7 +4,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-
+#include "type_cast.hpp"
 #include "all_type_variant.hpp"
 #include "types.hpp"
 
@@ -24,7 +24,14 @@ class DictionaryColumn : public BaseColumn {
   /**
    * Creates a Dictionary column from a given value column.
    */
-  explicit DictionaryColumn(const std::shared_ptr<BaseColumn>& base_column);
+  explicit DictionaryColumn(const std::shared_ptr<BaseColumn>& base_column){
+    for(size_t index=0; index < base_column->size(); index++){
+        _dictionary->push_back(type_cast<T>((*base_column)[index]));
+    }
+    std::sort(_dictionary->begin(), _dictionary->end());
+    _dictionary->erase(std::unique(_dictionary->begin(), _dictionary->end()), _dictionary->end());
+    _dictionary->shrink_to_fit();
+  }
 
   // SEMINAR INFORMATION: Since most of these methods depend on the template parameter, you will have to implement
   // the DictionaryColumn in this file. Replace the method signatures with actual implementations.
