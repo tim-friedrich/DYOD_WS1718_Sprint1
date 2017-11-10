@@ -49,8 +49,5 @@ class StorageManager : private Noncopyable {
 
  protected:
   void _print_table(std::ostream& out, const std::string& name, std::shared_ptr<Table> table) const;
-  static std::unique_ptr<StorageManager>& _instance_ptr();
-
-  friend std::unique_ptr<StorageManager> std::make_unique<StorageManager>();
 };
 }  // namespace opossum

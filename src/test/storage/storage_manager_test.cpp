@@ -58,12 +58,13 @@ TEST_F(StorageStorageManagerTest, TwiceGetIsSameObject) {
   EXPECT_EQ(&sm1, &sm2);
 }
 
-TEST_F(StorageStorageManagerTest, AfterResetDifferentObject) {
-  auto& sm1 = StorageManager::get();
-  StorageManager::reset();
-  auto& sm2 = StorageManager::get();
+TEST_F(StorageStorageManagerTest, AfterResetStateVanished) {
+  auto& sm = StorageManager::get();
+  EXPECT_EQ(sm.table_names().size(), 2u);
 
-  EXPECT_NE(&sm1, &sm2);
+  StorageManager::reset();
+
+  EXPECT_EQ(sm.table_names().size(), 0u);
 }
 
 TEST_F(StorageStorageManagerTest, AddTableShouldNotOverwrite) {

@@ -9,7 +9,10 @@
 
 namespace opossum {
 
-StorageManager& StorageManager::get() { return *StorageManager::_instance_ptr(); }
+StorageManager& StorageManager::get() {
+  static StorageManager instance;
+  return instance;
+}
 
 void StorageManager::add_table(const std::string& name, std::shared_ptr<Table> table) {
   Assert(_tables.count(name) == 0, "table already exists");
@@ -40,10 +43,7 @@ void StorageManager::print(std::ostream& out) const {
   }
 }
 
-void StorageManager::reset() {
-  auto& ptr = StorageManager::_instance_ptr();
-  ptr = std::make_unique<StorageManager>();
-}
+void StorageManager::reset() { get() = StorageManager(); }
 
 void StorageManager::_print_table(std::ostream& out, const std::string& name, std::shared_ptr<Table> table) const {
   out << "Table \"" << name << "\": ";
@@ -51,10 +51,4 @@ void StorageManager::_print_table(std::ostream& out, const std::string& name, st
   out << table->row_count() << " rows, ";
   out << table->chunk_count() << " chunks" << std::endl;
 }
-
-std::unique_ptr<StorageManager>& StorageManager::_instance_ptr() {
-  static std::unique_ptr<StorageManager> ptr = std::make_unique<StorageManager>();
-  return ptr;
-}
-
 }  // namespace opossum
