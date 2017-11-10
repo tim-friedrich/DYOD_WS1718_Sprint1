@@ -1,4 +1,5 @@
 #include <memory>
+#include <sstream>
 #include <string>
 
 #include "../base_test.hpp"
@@ -75,5 +76,27 @@ TEST_F(StorageStorageManagerTest, AddTableShouldNotOverwrite) {
   sm.add_table(table_name, table);
 
   EXPECT_THROW(sm.add_table(table_name, table), std::exception);
+}
+
+TEST_F(StorageStorageManagerTest, StorageManagerInfo) {
+  auto& sm = StorageManager::get();
+
+  auto table = sm.get_table("first_table");
+  table->add_column("pk", "int");
+  table->add_column("name", "string");
+
+  table->append({1, "foo"});
+  table->append({2, "bar"});
+  table->append({3, "spam"});
+
+  sm.get_table("second_table")->create_new_chunk();
+
+  std::stringstream ss;
+  sm.print(ss);
+
+  EXPECT_EQ(
+      "Table \"first_table\": 2 columns, 3 rows, 1 chunks\n"
+      "Table \"second_table\": 0 columns, 0 rows, 2 chunks\n",
+      ss.str());
 }
 }  // namespace opossum
