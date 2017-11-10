@@ -38,14 +38,15 @@ std::vector<std::string> StorageManager::table_names() const {
 }
 
 void StorageManager::print(std::ostream& out) const {
-  for (auto& entry : _tables) {
+  for (const auto& entry : _tables) {
     _print_table(out, entry.first, entry.second);
   }
 }
 
 void StorageManager::reset() { get() = StorageManager(); }
 
-void StorageManager::_print_table(std::ostream& out, const std::string& name, std::shared_ptr<Table> table) const {
+void StorageManager::_print_table(std::ostream& out, const std::string& name,
+                                  const std::shared_ptr<const Table> table) const {
   out << "Table \"" << name << "\": ";
   out << table->col_count() << " columns, ";
   out << table->row_count() << " rows, ";

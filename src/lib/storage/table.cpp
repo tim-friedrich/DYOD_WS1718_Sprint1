@@ -46,7 +46,7 @@ void Table::_add_column_definition(const std::string& name, const std::string& t
 void Table::append(std::vector<AllTypeVariant> values) {
   DebugAssert(!_chunks.empty(), "chunks must not be empty");
   _add_columns_if_missing();
-  auto chunk = _get_insert_chunk();
+  auto chunk = _get_or_create_chunk();
   chunk->append(values);
 }
 
@@ -108,7 +108,7 @@ void Table::_add_columns_if_missing() {
   }
 }
 
-std::shared_ptr<Chunk> Table::_get_insert_chunk() {
+std::shared_ptr<Chunk> Table::_get_or_create_chunk() {
   DebugAssert(!_chunks.empty(), "chunks must not be empty");
 
   auto last = _chunks.back();
