@@ -22,21 +22,32 @@ Table::Table(const uint32_t chunk_size) : _max_chunk_size(chunk_size) {
 }
 
 void Table::add_column_definition(const std::string& name, const std::string& type) {
+  Assert(row_count() == 0 && chunk_count() == 1,
+         "adding column only works on empty tables - padding with NULL values is not supported (yet)");
+  Assert(_chunks.at(0)->col_count() == 0, "add_column_definition and add_column are mutually exclusive ");
+  _add_column_definition(name, type);
+}
+
+void Table::add_column(const std::string& name, const std::string& type) {
+  Assert(row_count() == 0 && chunk_count() == 1,
+         "adding column only works on empty tables - padding with NULL values is not supported (yet)");
+  Assert(_column_names.size() == _chunks.at(0)->col_count(),
+         "add_column and add_column_definition are mutually exclusive");
+
+  _add_column_definition(name, type);
+
+  auto column = make_shared_by_column_type<BaseColumn, ValueColumn>(type);
+  _chunks.front()->add_column(column);
+}
+
+void Table::_add_column_definition(const std::string& name, const std::string& type) {
   this->_column_names.push_back(name);
   this->_column_types.push_back(type);
 }
 
-void Table::add_column(const std::string& name, const std::string& type) {
-  DebugAssert(this->row_count() == 0 && this->chunk_count() == 1,
-              "adding column only works on empty tables - padding with NULL values is not supported (yet)");
-  this->add_column_definition(name, type);
-
-  auto column = make_shared_by_column_type<BaseColumn, ValueColumn>(type);
-  this->_chunks.back()->add_column(column);
-}
-
 void Table::append(std::vector<AllTypeVariant> values) {
   DebugAssert(!this->_chunks.empty(), "chunks must not be empty");
+  _add_columns_if_missing();
   auto chunk = _get_insert_chunk();
   chunk->append(values);
 }
@@ -84,6 +95,19 @@ bool Table::_chunk_size_unlimited() const { return this->_max_chunk_size == 0; }
 Chunk& Table::_get_chunk(ChunkID chunk_id) const {
   auto chunk = this->_chunks.at(chunk_id);
   return *chunk;
+}
+
+void Table::_add_columns_if_missing() {
+  const size_t current_column_count = _chunks.at(0)->col_count();
+  if (current_column_count == _column_types.size()) {
+    return;
+  }
+
+  DebugAssert(current_column_count == 0, "expecting no existing columns");
+  for (const auto& type : _column_types) {
+    auto column = make_shared_by_column_type<BaseColumn, ValueColumn>(type);
+    _chunks.front()->add_column(column);
+  }
 }
 
 std::shared_ptr<Chunk> Table::_get_insert_chunk() {

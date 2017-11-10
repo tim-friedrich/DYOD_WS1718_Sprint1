@@ -71,4 +71,39 @@ TEST_F(StorageTableTest, GetColumnIdByName) {
 
 TEST_F(StorageTableTest, GetChunkSize) { EXPECT_EQ(t.chunk_size(), 2u); }
 
+// DefineColumnThenAdd, AddColumnThenDefine:
+// Those two methods should be mutual exclusive.
+// All columns are created either eagerly or lazily in batch mode upon append.
+// Trying to mix both approaches should result in error.
+TEST_F(StorageTableTest, DefineColumnThenAdd) {
+  Table table;
+
+  table.add_column_definition("foo", "int");
+
+  EXPECT_THROW(table.add_column("bar", "string"), std::exception);
+}
+
+TEST_F(StorageTableTest, AddColumnThenDefine) {
+  Table table;
+
+  table.add_column("bar", "string");
+
+  EXPECT_THROW(table.add_column_definition("foo", "int"), std::exception);
+}
+
+// col_count() should count schema columns (= even those not yet created)
+TEST_F(StorageTableTest, CreateColumnsLazily) {
+  Table table;
+
+  table.add_column_definition("foo", "string");
+  table.add_column_definition("bar", "int");
+
+  EXPECT_EQ(table.col_count(), 2u);
+
+  table.append({"spam", 3});
+
+  EXPECT_EQ(table.col_count(), 2u);
+  EXPECT_EQ(table.row_count(), 1u);
+}
+
 }  // namespace opossum

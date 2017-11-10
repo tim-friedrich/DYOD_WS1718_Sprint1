@@ -92,5 +92,7 @@ class Table : private Noncopyable {
   bool _chunk_size_unlimited() const;
   Chunk& _get_chunk(ChunkID chunk_id) const;
   std::shared_ptr<Chunk> _get_insert_chunk();
+  void _add_column_definition(const std::string& name, const std::string& type);
+  void _add_columns_if_missing();
 };
 }  // namespace opossum
