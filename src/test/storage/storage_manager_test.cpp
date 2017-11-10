@@ -1,4 +1,5 @@
 #include <memory>
+#include <string>
 
 #include "../base_test.hpp"
 #include "gtest/gtest.h"
@@ -63,5 +64,15 @@ TEST_F(StorageStorageManagerTest, AfterResetDifferentObject) {
   auto& sm2 = StorageManager::get();
 
   EXPECT_NE(&sm1, &sm2);
+}
+
+TEST_F(StorageStorageManagerTest, AddTableShouldNotOverwrite) {
+  auto& sm = StorageManager::get();
+  auto table = std::make_shared<Table>();
+  std::string table_name("spam");
+
+  sm.add_table(table_name, table);
+
+  EXPECT_THROW(sm.add_table(table_name, table), std::exception);
 }
 }  // namespace opossum

@@ -11,7 +11,10 @@ namespace opossum {
 
 StorageManager& StorageManager::get() { return *StorageManager::_instance_ptr(); }
 
-void StorageManager::add_table(const std::string& name, std::shared_ptr<Table> table) { this->_tables[name] = table; }
+void StorageManager::add_table(const std::string& name, std::shared_ptr<Table> table) {
+  Assert(_tables.count(name) == 0, "table already exists");
+  this->_tables[name] = table;
+}
 
 void StorageManager::drop_table(const std::string& name) {
   size_t erased = this->_tables.erase(name);
