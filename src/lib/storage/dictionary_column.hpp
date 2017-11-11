@@ -7,7 +7,7 @@
 #include <utility>
 #include <vector>
 #include "all_type_variant.hpp"
-#include "simple_attribute_vector.hpp"
+#include "fitted_attribute_vector.hpp"
 #include "type_cast.hpp"
 #include "types.hpp"
 
@@ -30,7 +30,7 @@ class DictionaryColumn : public BaseColumn {
   explicit DictionaryColumn(const std::shared_ptr<BaseColumn>& base_column) {
     _dictionary = std::make_shared<std::vector<T>>();
     _build_dictionary(base_column);
-    _attribute_vector = std::make_shared<SimpleAttributeVector>(base_column->size());
+    _assign_attribute_vector(base_column->size());
     _build_attribute_vector(base_column);
   }
 
@@ -90,6 +90,19 @@ class DictionaryColumn : public BaseColumn {
     std::sort(_dictionary->begin(), _dictionary->end());
     _dictionary->erase(std::unique(_dictionary->begin(), _dictionary->end()), _dictionary->end());
     _dictionary->shrink_to_fit();
+  }
+
+  void _assign_attribute_vector(const size_t size) {
+    Assert(size < std::numeric_limits<uint64_t>::max(), "Number of attributes out of range");
+    if (size < std::numeric_limits<uint8_t>::max()) {
+      _attribute_vector = std::make_shared<FittedAttributeVector<uint8_t>>(size);
+    } else if (size < std::numeric_limits<uint16_t>::max()) {
+      _attribute_vector = std::make_shared<FittedAttributeVector<uint16_t>>(size);
+    } else if (size < std::numeric_limits<uint32_t>::max()) {
+      _attribute_vector = std::make_shared<FittedAttributeVector<uint32_t>>(size);
+    } else {
+      _attribute_vector = std::make_shared<FittedAttributeVector<uint64_t>>(size);
+    }
   }
 
   void _build_attribute_vector(const std::shared_ptr<BaseColumn>& base_column) {
