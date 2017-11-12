@@ -21,7 +21,7 @@ void StorageManager::add_table(const std::string& name, std::shared_ptr<Table> t
 
 void StorageManager::drop_table(const std::string& name) {
   size_t erased = _tables.erase(name);
-  DebugAssert(erased == 1, "exactly one table dropped");
+  DebugAssert(erased == 1, "zero or more than one table has been removed");
 }
 
 std::shared_ptr<Table> StorageManager::get_table(const std::string& name) const { return _tables.at(name); }
