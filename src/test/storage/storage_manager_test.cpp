@@ -99,4 +99,13 @@ TEST_F(StorageStorageManagerTest, StorageManagerInfo) {
       "Table \"second_table\": 0 columns, 0 rows, 2 chunks\n",
       ss.str());
 }
+
+TEST_F(StorageStorageManagerTest, TableNames) {
+  auto& sm = StorageManager::get();
+
+  auto names = sm.table_names();
+
+  std::vector<std::string> expected {"first_table", "second_table"};
+  EXPECT_EQ(expected, names);
+}
 }  // namespace opossum
