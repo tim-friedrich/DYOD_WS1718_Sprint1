@@ -1,6 +1,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "../base_test.hpp"
 #include "gtest/gtest.h"
@@ -105,7 +106,7 @@ TEST_F(StorageStorageManagerTest, TableNames) {
 
   auto names = sm.table_names();
 
-  std::vector<std::string> expected {"first_table", "second_table"};
+  std::vector<std::string> expected{"first_table", "second_table"};
   EXPECT_EQ(expected, names);
 }
 }  // namespace opossum
