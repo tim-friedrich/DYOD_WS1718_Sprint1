@@ -19,7 +19,7 @@ void Chunk::add_column(std::shared_ptr<BaseColumn> column) { _columns.emplace_ba
 void Chunk::append(const std::vector<AllTypeVariant>& values) {
   DebugAssert(values.size() == _columns.size(), "append: each column must have exactly one value assigned");
 
-  for (size_t index = 0; index < _columns.size(); ++index) {
+  for (ColumnID index{0}; index < _columns.size(); ++index) {
     _columns[index]->append(values[index]);
   }
 }

@@ -43,7 +43,7 @@ class DictionaryColumn : public BaseColumn {
   const T get(const size_t i) const { return _dictionary->at(_attribute_vector->get(i)); }
 
   // dictionary columns are immutable
-  void append(const AllTypeVariant&) override {}
+  void append(const AllTypeVariant&) override { throw std::logic_error("dictionary columns are immutable"); }
 
   // returns an underlying dictionary
   std::shared_ptr<const std::vector<T>> dictionary() const { return _dictionary; }
@@ -85,19 +85,31 @@ class DictionaryColumn : public BaseColumn {
   std::shared_ptr<BaseAttributeVector> _attribute_vector;
 
  protected:
-  void _build_dictionary(const std::shared_ptr<BaseColumn>& base_column) {
-    const auto value_column = std::dynamic_pointer_cast<ValueColumn<T>>(base_column);
-    if (value_column) {
-      (*_dictionary) = value_column->values();
-    } else {
-      PerformanceWarning("Element wise copy of column");
-      for (size_t index = 0; index < base_column->size(); ++index) {
-        _dictionary->emplace_back(type_cast<T>((*base_column)[index]));
-      }
-    }
+  void _build_dictionary(const std::shared_ptr<const BaseColumn>& base_column) {
+    _copy_values(base_column);
     std::sort(_dictionary->begin(), _dictionary->end());
     _dictionary->erase(std::unique(_dictionary->begin(), _dictionary->end()), _dictionary->end());
     _dictionary->shrink_to_fit();
+  }
+
+  void _copy_values(const std::shared_ptr<const BaseColumn>& base_column) {
+    const auto value_column = std::dynamic_pointer_cast<const ValueColumn<T>>(base_column);
+    if (value_column) {
+      _copy_values_fast(value_column);
+    } else {
+      _copy_values_slow(base_column);
+    }
+  }
+
+  void _copy_values_fast(const std::shared_ptr<const ValueColumn<T>>& value_column) {
+    (*_dictionary) = value_column->values();
+  }
+
+  void _copy_values_slow(const std::shared_ptr<const BaseColumn>& base_column) {
+    PerformanceWarning("element-wise copy of column");
+    for (size_t index = 0; index < base_column->size(); ++index) {
+      _dictionary->emplace_back(type_cast<T>((*base_column)[index]));
+    }
   }
 
   void _assign_attribute_vector(const size_t size) {
