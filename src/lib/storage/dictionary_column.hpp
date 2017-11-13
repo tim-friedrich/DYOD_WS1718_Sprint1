@@ -6,10 +6,12 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "../utils/performance_warning.hpp"
 #include "all_type_variant.hpp"
 #include "fitted_attribute_vector.hpp"
 #include "type_cast.hpp"
 #include "types.hpp"
+#include "value_column.hpp"
 
 namespace opossum {
 
@@ -84,8 +86,14 @@ class DictionaryColumn : public BaseColumn {
 
  protected:
   void _build_dictionary(const std::shared_ptr<BaseColumn>& base_column) {
-    for (size_t index = 0; index < base_column->size(); ++index) {
-      _dictionary->push_back(type_cast<T>((*base_column)[index]));
+    const auto value_column = std::dynamic_pointer_cast<ValueColumn<T>>(base_column);
+    if (value_column) {
+      (*_dictionary) = value_column->values();
+    } else {
+      PerformanceWarning("Element wise copy of column");
+      for (size_t index = 0; index < base_column->size(); ++index) {
+        _dictionary->push_back(type_cast<T>((*base_column)[index]));
+      }
     }
     std::sort(_dictionary->begin(), _dictionary->end());
     _dictionary->erase(std::unique(_dictionary->begin(), _dictionary->end()), _dictionary->end());

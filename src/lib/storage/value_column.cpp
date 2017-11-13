@@ -33,6 +33,10 @@ size_t ValueColumn<T>::size() const {
   return _content.size();
 }
 
+template <typename T>
+const std::vector<T>& ValueColumn<T>::values() const {
+  return _content;
+}
 EXPLICITLY_INSTANTIATE_COLUMN_TYPES(ValueColumn);
 
 }  // namespace opossum
