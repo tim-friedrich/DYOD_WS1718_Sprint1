@@ -9,11 +9,11 @@
 #include <utility>
 #include <vector>
 
-#include "value_column.hpp"
-
+#include "dictionary_column.hpp"
 #include "resolve_type.hpp"
 #include "types.hpp"
 #include "utils/assert.hpp"
+#include "value_column.hpp"
 
 namespace opossum {
 
@@ -123,6 +123,16 @@ std::shared_ptr<Chunk> Table::_get_or_create_chunk() {
   return _chunks.back();
 }
 
-void Table::compress_chunk(ChunkID chunk_id) { throw std::runtime_error("TODO"); }
+void Table::compress_chunk(ChunkID chunk_id) {
+  Chunk& chunk = get_chunk(chunk_id);
+  auto compressed_chunk = std::make_shared<Chunk>();
+  for (size_t index = 0; index < chunk.col_count(); index++) {
+    auto type = _column_types.at(index);
+    auto column = chunk.get_column(ColumnID(index));
+    auto dict_col = make_shared_by_column_type<BaseColumn, DictionaryColumn>(type, column);
+    compressed_chunk->add_column(dict_col);
+  }
+  _chunks[chunk_id] = compressed_chunk;
+}
 
 }  // namespace opossum
