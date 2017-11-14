@@ -92,7 +92,7 @@ class DictionaryColumn : public BaseColumn {
     } else {
       PerformanceWarning("Element wise copy of column");
       for (size_t index = 0; index < base_column->size(); ++index) {
-        _dictionary->push_back(type_cast<T>((*base_column)[index]));
+        _dictionary->emplace_back(type_cast<T>((*base_column)[index]));
       }
     }
     std::sort(_dictionary->begin(), _dictionary->end());

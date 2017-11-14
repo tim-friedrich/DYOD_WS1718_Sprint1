@@ -14,7 +14,7 @@
 
 namespace opossum {
 
-void Chunk::add_column(std::shared_ptr<BaseColumn> column) { _columns.push_back(column); }
+void Chunk::add_column(std::shared_ptr<BaseColumn> column) { _columns.emplace_back(column); }
 
 void Chunk::append(const std::vector<AllTypeVariant>& values) {
   DebugAssert(values.size() == _columns.size(), "append: each column must have exactly one value assigned");
