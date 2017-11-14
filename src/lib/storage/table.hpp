@@ -43,17 +43,17 @@ class Table : private Noncopyable {
   ChunkID chunk_count() const;
 
   // returns the chunk with the given id
-  Chunk& get_chunk(ChunkID chunk_id);
-  const Chunk& get_chunk(ChunkID chunk_id) const;
+  Chunk& get_chunk(const ChunkID chunk_id);
+  const Chunk& get_chunk(const ChunkID chunk_id) const;
 
   // Returns a list of all column names.
   const std::vector<std::string>& column_names() const;
 
   // returns the column name of the nth column
-  const std::string& column_name(ColumnID column_id) const;
+  const std::string& column_name(const ColumnID column_id) const;
 
   // returns the column type of the nth column
-  const std::string& column_type(ColumnID column_id) const;
+  const std::string& column_type(const ColumnID column_id) const;
 
   // Returns the column with the given name.
   // This method is intended for debugging purposes only.
@@ -74,10 +74,13 @@ class Table : private Noncopyable {
 
   // inserts a row at the end of the table
   // note this is slow and not thread-safe and should be used for testing purposes only
-  void append(std::vector<AllTypeVariant> values);
+  void append(const std::vector<AllTypeVariant> values);
 
   // creates a new chunk and appends it
   void create_new_chunk();
+
+  // compresses a ValueColumn into a DictionaryColumn
+  void compress_chunk(const ChunkID chunk_id);
 
  protected:
   const uint32_t _max_chunk_size;
@@ -87,7 +90,9 @@ class Table : private Noncopyable {
 
  protected:
   bool _chunk_size_unlimited() const;
-  Chunk& _get_chunk(ChunkID chunk_id) const;
-  std::shared_ptr<Chunk> _get_insert_chunk();
+  Chunk& _get_chunk(const ChunkID chunk_id) const;
+  std::shared_ptr<Chunk> _get_or_create_chunk();
+  void _add_column_definition(const std::string& name, const std::string& type);
+  void _add_columns_if_missing();
 };
 }  // namespace opossum
