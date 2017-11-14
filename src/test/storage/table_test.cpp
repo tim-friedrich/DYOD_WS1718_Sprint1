@@ -32,8 +32,7 @@ TEST_F(StorageTableTest, ChunkCount) {
 
 TEST_F(StorageTableTest, GetChunk) {
   t.get_chunk(ChunkID{0});
-  // TODO(anyone): Do we want checks here?
-  // EXPECT_THROW(t.get_chunk(ChunkID{q}), std::exception);
+  EXPECT_THROW(t.get_chunk(ChunkID{1}), std::exception);
   t.append({4, "Hello,"});
   t.append({6, "world"});
   t.append({3, "!"});
@@ -54,23 +53,21 @@ TEST_F(StorageTableTest, RowCount) {
 }
 
 TEST_F(StorageTableTest, GetColumnNames) {
-  EXPECT_EQ(t.column_names().size(), 2u);
-  EXPECT_EQ(t.column_names().at(0), "col_1");
-  EXPECT_EQ(t.column_names().at(1), "col_2");
-  EXPECT_THROW(t.column_names().at(2), std::exception);
+  auto& names = t.column_names();
+
+  std::vector<std::string> expected{"col_1", "col_2"};
+  EXPECT_EQ(expected, names);
 }
 
 TEST_F(StorageTableTest, GetColumnName) {
   EXPECT_EQ(t.column_name(ColumnID{0}), "col_1");
   EXPECT_EQ(t.column_name(ColumnID{1}), "col_2");
-  // TODO(anyone): Do we want checks here?
   EXPECT_THROW(t.column_name(ColumnID{2}), std::exception);
 }
 
 TEST_F(StorageTableTest, GetColumnType) {
   EXPECT_EQ(t.column_type(ColumnID{0}), "int");
   EXPECT_EQ(t.column_type(ColumnID{1}), "string");
-  // TODO(anyone): Do we want checks here?
   EXPECT_THROW(t.column_type(ColumnID{2}), std::exception);
 }
 
@@ -117,7 +114,6 @@ TEST_F(StorageTableTest, CreateColumnsLazily) {
 }
 
 TEST_F(StorageTableTest, CompressChunk) {
-  t.get_chunk(ChunkID{0});
   t.append({4, "Hello,"});
   t.append({6, "world"});
   t.append({3, "!"});
