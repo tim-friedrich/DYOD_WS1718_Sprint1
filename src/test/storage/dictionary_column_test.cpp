@@ -129,7 +129,13 @@ TEST_F(StorageDictionaryColumnTest, get) {
   auto col = make_shared_by_column_type<BaseColumn, DictionaryColumn>("int", vc_int);
   auto dict_col = std::dynamic_pointer_cast<DictionaryColumn<int>>(col);
 
-  EXPECT_EQ(dict_col->get(0), 0);
-  EXPECT_EQ(dict_col->get(2), 4);
+  EXPECT_EQ((*dict_col)[0], AllTypeVariant{0});
+  EXPECT_EQ((*dict_col)[2], AllTypeVariant{4});
+}
+
+TEST_F(StorageDictionaryColumnTest, immutable) {
+  auto col = make_shared_by_column_type<BaseColumn, DictionaryColumn>("string", vc_str);
+
+  EXPECT_THROW(col->append("anything"), std::logic_error);
 }
 }  // namespace opossum
