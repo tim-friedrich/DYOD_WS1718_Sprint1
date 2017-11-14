@@ -45,7 +45,7 @@ void Table::_add_column_definition(const std::string& name, const std::string& t
   _column_types.emplace_back(type);
 }
 
-void Table::append(std::vector<AllTypeVariant> values) {
+void Table::append(const std::vector<AllTypeVariant> values) {
   DebugAssert(!_chunks.empty(), "chunks must not be empty");
   _add_columns_if_missing();
   auto chunk = _get_or_create_chunk();
@@ -55,7 +55,7 @@ void Table::append(std::vector<AllTypeVariant> values) {
 void Table::create_new_chunk() {
   auto chunk = std::make_shared<Chunk>();
 
-  for (auto& type : _column_types) {
+  for (const auto& type : _column_types) {
     auto column = make_shared_by_column_type<BaseColumn, ValueColumn>(type);
     chunk->add_column(column);
   }
@@ -73,7 +73,7 @@ uint64_t Table::row_count() const {
 ChunkID Table::chunk_count() const { return ChunkID(_chunks.size()); }
 
 ColumnID Table::column_id_by_name(const std::string& column_name) const {
-  auto found = std::find(_column_names.cbegin(), _column_names.cend(), column_name);
+  const auto found = std::find(_column_names.cbegin(), _column_names.cend(), column_name);
   DebugAssert(found != _column_names.cend(), "column name not found");
   return ColumnID(std::distance(_column_names.cbegin(), found));
 }
@@ -82,18 +82,18 @@ uint32_t Table::chunk_size() const { return _max_chunk_size; }
 
 const std::vector<std::string>& Table::column_names() const { return _column_names; }
 
-const std::string& Table::column_name(ColumnID column_id) const { return _column_names.at(column_id); }
+const std::string& Table::column_name(const ColumnID column_id) const { return _column_names.at(column_id); }
 
-const std::string& Table::column_type(ColumnID column_id) const { return _column_types.at(column_id); }
+const std::string& Table::column_type(const ColumnID column_id) const { return _column_types.at(column_id); }
 
-Chunk& Table::get_chunk(ChunkID chunk_id) { return _get_chunk(chunk_id); }
+Chunk& Table::get_chunk(const ChunkID chunk_id) { return _get_chunk(chunk_id); }
 
-const Chunk& Table::get_chunk(ChunkID chunk_id) const { return _get_chunk(chunk_id); }
+const Chunk& Table::get_chunk(const ChunkID chunk_id) const { return _get_chunk(chunk_id); }
 
 bool Table::_chunk_size_unlimited() const { return _max_chunk_size == 0; }
 
-Chunk& Table::_get_chunk(ChunkID chunk_id) const {
-  auto chunk = _chunks.at(chunk_id);
+Chunk& Table::_get_chunk(const ChunkID chunk_id) const {
+  const auto chunk = _chunks.at(chunk_id);
   return *chunk;
 }
 
@@ -125,13 +125,13 @@ std::shared_ptr<Chunk> Table::_get_or_create_chunk() {
   return _chunks.back();
 }
 
-void Table::compress_chunk(ChunkID chunk_id) {
-  Chunk& chunk = get_chunk(chunk_id);
+void Table::compress_chunk(const ChunkID chunk_id) {
+  const Chunk& chunk = get_chunk(chunk_id);
   auto compressed_chunk = std::make_shared<Chunk>();
-  for (size_t index = 0; index < chunk.col_count(); index++) {
-    auto type = _column_types.at(index);
-    auto column = chunk.get_column(ColumnID(index));
-    auto dict_col = make_shared_by_column_type<BaseColumn, DictionaryColumn>(type, column);
+  for (ColumnID index{0}; index < chunk.col_count(); ++index) {
+    const auto& type = _column_types.at(index);
+    const auto& column = chunk.get_column(index);
+    const auto dict_col = make_shared_by_column_type<BaseColumn, DictionaryColumn>(type, column);
     compressed_chunk->add_column(dict_col);
   }
   _chunks[chunk_id] = compressed_chunk;
