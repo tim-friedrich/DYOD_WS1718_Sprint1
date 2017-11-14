@@ -33,7 +33,7 @@ TEST_F(StorageTableTest, ChunkCount) {
 TEST_F(StorageTableTest, GetChunk) {
   t.get_chunk(ChunkID{0});
   // TODO(anyone): Do we want checks here?
-  //EXPECT_THROW(t.get_chunk(ChunkID{"q"}), std::exception);
+  // EXPECT_THROW(t.get_chunk(ChunkID{q}), std::exception);
   t.append({4, "Hello,"});
   t.append({6, "world"});
   t.append({3, "!"});
@@ -116,7 +116,6 @@ TEST_F(StorageTableTest, CreateColumnsLazily) {
   EXPECT_EQ(table.row_count(), 1u);
 }
 
-
 TEST_F(StorageTableTest, CompressChunk) {
   t.get_chunk(ChunkID{0});
   t.append({4, "Hello,"});
@@ -135,5 +134,3 @@ TEST_F(StorageTableTest, CompressChunk) {
 }
 
 }  // namespace opossum
-
-

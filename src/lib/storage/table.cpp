@@ -17,7 +17,9 @@
 
 namespace opossum {
 
-Table::Table(const uint32_t chunk_size) : _max_chunk_size(chunk_size) { _chunks.emplace_back(std::make_shared<Chunk>()); }
+Table::Table(const uint32_t chunk_size) : _max_chunk_size(chunk_size) {
+  _chunks.emplace_back(std::make_shared<Chunk>());
+}
 
 void Table::add_column_definition(const std::string& name, const std::string& type) {
   Assert(row_count() == 0 && chunk_count() == 1,
