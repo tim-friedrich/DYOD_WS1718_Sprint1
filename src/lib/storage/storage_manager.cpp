@@ -32,7 +32,7 @@ std::vector<std::string> StorageManager::table_names() const {
   std::vector<std::string> keys;
   keys.reserve(_tables.size());
   for (auto& entry : _tables) {
-    keys.push_back(entry.first);
+    keys.emplace_back(entry.first);
   }
   return keys;
 }
