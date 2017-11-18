@@ -90,6 +90,10 @@ Chunk& Table::get_chunk(const ChunkID chunk_id) { return _get_chunk(chunk_id); }
 
 const Chunk& Table::get_chunk(const ChunkID chunk_id) const { return _get_chunk(chunk_id); }
 
+void emplace_chunk(Chunk chunk) {
+  // Implementation goes here
+}
+
 bool Table::_chunk_size_unlimited() const { return _max_chunk_size == 0; }
 
 Chunk& Table::_get_chunk(const ChunkID chunk_id) const {
