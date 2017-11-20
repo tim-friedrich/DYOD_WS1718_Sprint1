@@ -17,5 +17,8 @@ class GetTable : public AbstractOperator {
 
  protected:
   std::shared_ptr<const Table> _on_execute() override;
+
+ protected:
+  const std::string _name;
 };
 }  // namespace opossum
