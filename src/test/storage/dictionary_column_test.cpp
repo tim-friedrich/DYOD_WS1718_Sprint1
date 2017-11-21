@@ -84,7 +84,7 @@ TEST_F(StorageDictionaryColumnTest, _assign_attribute_vector) {
   EXPECT_EQ(sizeof(uint8_t), dict_col->attribute_vector()->size());
 
   vc_str = std::make_shared<ValueColumn<std::string>>();
-  for (uint16_t i = 0; i < std::numeric_limits<uint16_t>::max() - 1; i++) {
+  for (uint16_t i = 0; i < std::numeric_limits<uint8_t>::max() + 1; i++) {
     vc_str->append("Bill");
   }
 
@@ -93,26 +93,15 @@ TEST_F(StorageDictionaryColumnTest, _assign_attribute_vector) {
 
   EXPECT_EQ(sizeof(uint16_t), dict_col->attribute_vector()->width());
 
-  // these tests takes way to long. we need to find a better way to test it. e.g. mocks
-  // vc_str = std::make_shared<ValueColumn<std::string>>();
-  // for(uint32_t i=0; i<std::numeric_limits<uint32_t>::max()-1; i++){
-  //   vc_str->append("Bill");
-  // }
-  //
-  // col = make_shared_by_column_type<BaseColumn, DictionaryColumn>("string", vc_str);
-  // dict_col = std::dynamic_pointer_cast<DictionaryColumn<std::string>>(col);
-  //
-  // EXPECT_EQ(sizeof(uint32_t), dict_col->attribute_vector()->width());
-  //
-  // vc_str = std::make_shared<ValueColumn<std::string>>();
-  // for(uint64_t i=0; i<std::numeric_limits<uint64_t>::max()-1; i++){
-  //   vc_str->append("Bill");
-  // }
-  //
-  // col = make_shared_by_column_type<BaseColumn, DictionaryColumn>("string", vc_str);
-  // dict_col = std::dynamic_pointer_cast<DictionaryColumn<std::string>>(col);
-  //
-  // EXPECT_EQ(sizeof(uint64_t), dict_col->attribute_vector()->width());
+  vc_str = std::make_shared<ValueColumn<std::string>>();
+  for(uint32_t i=0; i<std::numeric_limits<uint16_t>::max() + 1; i++){
+    vc_str->append("Bill");
+  }
+
+  col = make_shared_by_column_type<BaseColumn, DictionaryColumn>("string", vc_str);
+  dict_col = std::dynamic_pointer_cast<DictionaryColumn<std::string>>(col);
+
+  EXPECT_EQ(sizeof(uint32_t), dict_col->attribute_vector()->width());
 }
 
 TEST_F(StorageDictionaryColumnTest, value_by_value_id) {
