@@ -19,6 +19,7 @@ set(
     storage/dictionary_column.hpp
     storage/fitted_attribute_vector.hpp
     storage/reference_column.hpp
+    storage/reference_column.cpp
     storage/storage_manager.cpp
     storage/storage_manager.hpp
     storage/table.cpp
