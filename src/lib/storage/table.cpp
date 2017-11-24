@@ -101,4 +101,10 @@ std::shared_ptr<Chunk> Table::_get_insert_chunk() {
   return this->_chunks.back();
 }
 
+void emplace_chunk(Chunk chunk) {
+  // Implementation goes here
+}
+
+void Table::compress_chunk(ChunkID chunk_id) { throw std::runtime_error("TODO"); }
+
 }  // namespace opossum
