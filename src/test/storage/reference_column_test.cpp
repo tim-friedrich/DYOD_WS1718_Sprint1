@@ -40,9 +40,7 @@ class ReferenceColumnTest : public ::testing::Test {
 
     StorageManager::get().add_table("test_table_dict", _test_table_dict);
   }
-  virtual void TearDown() {
-    StorageManager::reset();
-  }
+  virtual void TearDown() { StorageManager::reset(); }
 
  public:
   std::shared_ptr<opossum::Table> _test_table, _test_table_dict;

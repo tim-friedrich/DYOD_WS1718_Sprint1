@@ -94,7 +94,7 @@ TEST_F(StorageDictionaryColumnTest, _assign_attribute_vector) {
   EXPECT_EQ(sizeof(uint16_t), dict_col->attribute_vector()->width());
 
   vc_str = std::make_shared<ValueColumn<std::string>>();
-  for(uint32_t i=0; i<std::numeric_limits<uint16_t>::max() + 1; i++){
+  for (uint32_t i = 0; i < std::numeric_limits<uint16_t>::max() + 1; i++) {
     vc_str->append("Bill");
   }
 
