@@ -1,3 +1,4 @@
+#include <functional>
 #include <memory>
 
 #include "../resolve_type.hpp"
@@ -5,6 +6,32 @@
 #include "table_scan.hpp"
 
 namespace opossum {
+
+namespace operators {
+
+template <typename T>
+using op = std::function<bool(const T&, const T&)>;
+
+template <typename T>
+op<T> get(const ScanType scan_type) {
+  switch (scan_type) {
+    case ScanType::OpEquals:
+      return [](T t1, T t2) { return t1 == t2; };
+    case ScanType::OpNotEquals:
+      return [](T t1, T t2) { return t1 != t2; };
+    case ScanType::OpLessThan:
+      return [](T t1, T t2) { return t1 < t2; };
+    case ScanType::OpLessThanEquals:
+      return [](T t1, T t2) { return t1 <= t2; };
+    case ScanType::OpGreaterThan:
+      return [](T t1, T t2) { return t1 > t2; };
+    case ScanType::OpGreaterThanEquals:
+      return [](T t1, T t2) { return t1 >= t2; };
+    default:
+      throw std::logic_error("scan type not supported");
+  }
+}
+}  // namespace operators
 
 class BaseTableScanImpl {
  public:
