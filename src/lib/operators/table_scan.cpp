@@ -6,9 +6,11 @@
 #include <vector>
 
 #include "resolve_type.hpp"
+#include "storage/chunk.hpp"
 #include "storage/dictionary_column.hpp"
 #include "storage/reference_column.hpp"
 #include "storage/table.hpp"
+#include "storage/value_column.hpp"
 
 namespace opossum {
 
@@ -18,7 +20,7 @@ template <typename T>
 using op = std::function<bool(const T&, const T&)>;
 
 template <typename T>
-op<T> get_comparator(const ScanType scan_type) {
+op<T> get(const ScanType scan_type) {
   switch (scan_type) {
     case ScanType::OpEquals:
       return [](T t1, T t2) { return t1 == t2; };
@@ -45,53 +47,94 @@ class BaseTableScanImpl {
   virtual std::shared_ptr<const Table> execute() = 0;
 };
 
-// T = datatype
+class Chunk;
+
 template <typename T>
 class TableScanImpl : public BaseTableScanImpl {
  public:
-  TableScanImpl<T>(const std::shared_ptr<const AbstractOperator> in, const ColumnID column_id, const ScanType scan_type,
-                   const AllTypeVariant search_value)
-      : _in(in), _column_id(column_id), _scan_type(scan_type), _search_value(search_value) {}
+  TableScanImpl(const std::shared_ptr<const Table> table, const ColumnID column_id, const ScanType scan_type,
+                const AllTypeVariant search_value)
+      : _table(table),
+        _column_id(column_id),
+        _op(operators::get<T>(scan_type)),
+        _search_value(type_cast<T>(search_value)) {}
 
   std::shared_ptr<const Table> execute() override {
-    T search_value = type_cast<T>(_search_value);
-    auto pos_list = std::make_shared<PosList>();
-    auto result_table = std::make_shared<Table>();
-    const auto in_table = _in->get_output();
+    const auto result_table = std::make_shared<Table>();
 
-    for (ChunkID chunk_id{0}; in_table->chunk_count(); chunk_id++) {
-      const Chunk& chunk = in_table->get_chunk(chunk_id);
-      auto base_column = chunk.get_column(_column_id);
-      auto value_column = std::dynamic_pointer_cast<ValueColumn<T>>(base_column);
+    for (ColumnID index{0}; index < _table->col_count(); ++index) {
+      result_table->add_column_definition(_table->column_name(index), _table->column_type(index));
+    }
 
-      if (value_column != nullptr) {
-        const std::vector<T>& col_values = value_column->values();
-        for (ChunkOffset chunk_offset; chunk_offset < col_values.size(); chunk_offset++) {
-          auto comparing_function = operators::get_comparator<T>(_scan_type);
-          if (comparing_function(col_values[chunk_offset], search_value)) {
-            pos_list->emplace_back(RowID{chunk_id, chunk_offset});
-          }
+    for (ChunkID chunk_id{0}; chunk_id < _table->chunk_count(); ++chunk_id) {
+      const Chunk& chunk = _table->get_chunk(chunk_id);
+      const auto column = chunk.get_column(_column_id);
+
+      const auto vc = std::dynamic_pointer_cast<ValueColumn<T>>(column);
+      if (vc) {
+        auto pos = _scan_value_column(chunk_id, vc);
+        auto target_chunk = std::make_shared<Chunk>();
+        for (ColumnID col{0}; col < _table->col_count(); ++col) {
+          auto new_col = std::make_shared<ReferenceColumn>(_table, col, pos);
+          target_chunk->add_column(new_col);
         }
+        result_table->emplace_chunk(target_chunk);
       }
 
-      auto dictionary_column = std::dynamic_pointer_cast<DictionaryColumn<T>>(base_column);
-      if (dictionary_column != nullptr) {
-        // FIXME TODO magic
+      const auto rc = std::dynamic_pointer_cast<ReferenceColumn>(column);
+      if (rc) {
+        auto pos = _scan_reference_column(chunk_id, rc);
+        auto target_chunk = std::make_shared<Chunk>();
+        for (ColumnID col{0}; col < _table->col_count(); ++col) {
+          auto new_col = std::make_shared<ReferenceColumn>(rc->referenced_table(), col, pos);
+          target_chunk->add_column(new_col);
+        }
+        result_table->emplace_chunk(target_chunk);
       }
     }
 
-    auto ref_column = std::make_shared<ReferenceColumn>(in_table, _column_id, pos_list);
-    auto result_chunk = Chunk();
-    result_chunk.add_column(ref_column);
-    result_table->emplace_chunk(std::move(result_chunk));
     return result_table;
   }
 
+  std::shared_ptr<PosList> _scan_value_column(const ChunkID chunk_id, const std::shared_ptr<ValueColumn<T>> vc) {
+    const auto& content = vc->values();
+    const auto pos = std::make_shared<PosList>();
+    for (ChunkOffset index{0}; index < content.size(); ++index) {
+      const T& value = content[index];
+      if (_op(value, _search_value)) {
+        pos->push_back(RowID{chunk_id, index});
+      }
+    }
+    return pos;
+  }
+
+  std::shared_ptr<PosList> _scan_reference_column(const ChunkID chunk_id, const std::shared_ptr<ReferenceColumn> rc) {
+    const auto pos = std::make_shared<PosList>();
+    const auto rp = rc->pos_list();
+    for (size_t index = 0; index < rc->size(); ++index) {
+      const RowID entry = (*rp)[index];
+      const std::shared_ptr<BaseColumn> bc =
+          rc->referenced_table()->get_chunk(entry.chunk_id).get_column(rc->referenced_column_id());
+
+      const auto vc = std::dynamic_pointer_cast<ValueColumn<T>>(bc);
+      if (vc) {
+        const T& val = vc->values()[entry.chunk_offset];
+        if (_op(val, _search_value)) {
+          pos->push_back(entry);
+        }
+      } else {
+        const auto dc = std::dynamic_pointer_cast<DictionaryColumn<T>>(bc);
+        Assert(dc, "should be a dict column");
+      }
+    }
+    return pos;
+  }
+
  protected:
-  const std::shared_ptr<const AbstractOperator> _in;
+  const std::shared_ptr<const Table> _table;
   const ColumnID _column_id;
-  const ScanType _scan_type;
-  const AllTypeVariant _search_value;
+  const operators::op<T> _op;
+  const T _search_value;
 };
 
 TableScan::TableScan(const std::shared_ptr<const AbstractOperator> in, const ColumnID column_id,
@@ -109,8 +152,8 @@ const AllTypeVariant& TableScan::search_value() const { return _search_value; }
 std::shared_ptr<const Table> TableScan::_on_execute() {
   const auto in_table = _in->get_output();
   const auto& type = in_table->column_type(_column_id);
-  _impl =
-      make_unique_by_column_type<BaseTableScanImpl, TableScanImpl>(type, _in, _column_id, _scan_type, _search_value);
+  _impl = make_unique_by_column_type<BaseTableScanImpl, TableScanImpl>(type, in_table, _column_id, _scan_type,
+                                                                       _search_value);
   return _impl->execute();
 }
 
