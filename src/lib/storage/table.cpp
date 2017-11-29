@@ -90,9 +90,7 @@ Chunk& Table::get_chunk(const ChunkID chunk_id) { return _get_chunk(chunk_id); }
 
 const Chunk& Table::get_chunk(const ChunkID chunk_id) const { return _get_chunk(chunk_id); }
 
-void Table::emplace_chunk(Chunk chunk) {
-    _chunks.emplace_back(std::make_shared<Chunk>(std::move(chunk)));
-}
+void Table::emplace_chunk(Chunk chunk) { _chunks.emplace_back(std::make_shared<Chunk>(std::move(chunk))); }
 
 bool Table::_chunk_size_unlimited() const { return _max_chunk_size == 0; }
 
