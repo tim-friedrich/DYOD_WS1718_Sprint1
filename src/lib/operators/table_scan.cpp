@@ -57,7 +57,8 @@ class TableScanImpl : public BaseTableScanImpl {
       : _table(table),
         _column_id(column_id),
         _op(operators::get<T>(scan_type)),
-        _search_value(type_cast<T>(search_value)) {}
+        _search_value(type_cast<T>(search_value)),
+        _scan_type(scan_type) {}
 
   std::shared_ptr<const Table> execute() override {
     const auto result_table = std::make_shared<Table>();
@@ -79,6 +80,17 @@ class TableScanImpl : public BaseTableScanImpl {
           target_chunk->add_column(new_col);
         }
         result_table->emplace_chunk(target_chunk);
+      }
+
+      const auto dc = std::dynamic_pointer_cast<DictionaryColumn<T>>(column);
+      if (dc) {
+          auto pos = _scan_dictionary_column(chunk_id, dc);
+          auto target_chunk = std::make_shared<Chunk>();
+          for (ColumnID col {0}; col < _table->col_count(); ++col) {
+            auto new_col = std::make_shared<ReferenceColumn>(_table, col, pos);
+            target_chunk->add_column(new_col);
+          }
+          result_table->emplace_chunk(target_chunk);
       }
 
       const auto rc = std::dynamic_pointer_cast<ReferenceColumn>(column);
@@ -107,7 +119,60 @@ class TableScanImpl : public BaseTableScanImpl {
     }
     return pos;
   }
+  std::shared_ptr<PosList> _scan_dictionary_column(const ChunkID chunk_id, const std::shared_ptr<DictionaryColumn<T>> dc) {
+    const ValueID search_value_id = dc->lower_bound(_search_value);
+    const auto pos = std::make_shared<PosList>();
+    // check invalid id
 
+    if(search_value_id == std::numeric_limits<ValueID::base_type>::max()){
+      // -> value not found
+      // != < <=  all
+      if(_scan_type == ScanType::OpLessThan ||
+          _scan_type == ScanType::OpLessThanEquals ||
+          _scan_type == ScanType::OpNotEquals){
+        for(ChunkOffset index{0}; index < dc->size(); index++){
+          pos->push_back(RowID {chunk_id, index});
+        }
+      }
+    } else{
+      // -> value found
+      if(_search_value == dc->value_by_value_id(search_value_id)){
+        // -> exact match
+        for(ChunkOffset index{0}; index < dc->size(); index++){
+          const T& value = dc->get(index);
+          if (_op(value, _search_value)) {
+            pos->push_back(RowID {chunk_id, index});
+          }
+        }
+      } else{
+        // != all
+        if(_scan_type == ScanType::OpNotEquals){
+          for(ChunkOffset index{0}; index < dc->size(); index++){
+            pos->push_back(RowID {chunk_id, index});
+          }
+        }
+
+        auto op = _op;
+        // > operator swap auf >=
+        if(_scan_type == ScanType::OpGreaterThan){
+          op = operators::get<T>(ScanType::OpGreaterThanEquals);
+        }
+        // < <= >= normal scan/check
+        if(_scan_type == ScanType::OpGreaterThan ||
+            _scan_type == ScanType::OpLessThan ||
+            _scan_type == ScanType::OpLessThanEquals ||
+            _scan_type == ScanType::OpGreaterThanEquals){
+          for(ChunkOffset index{0}; index < dc->size(); index++){
+            const T& value = dc->get(index);
+            if (op(value, _search_value)) {
+              pos->push_back(RowID {chunk_id, index});
+            }
+          }
+        }
+      }
+    }
+    return pos;
+  }
   std::shared_ptr<PosList> _scan_reference_column(const ChunkID chunk_id, const std::shared_ptr<ReferenceColumn> rc) {
     const auto pos = std::make_shared<PosList>();
     const auto rp = rc->pos_list();
@@ -135,6 +200,7 @@ class TableScanImpl : public BaseTableScanImpl {
   const ColumnID _column_id;
   const operators::op<T> _op;
   const T _search_value;
+  const ScanType _scan_type;
 };
 
 TableScan::TableScan(const std::shared_ptr<const AbstractOperator> in, const ColumnID column_id,
