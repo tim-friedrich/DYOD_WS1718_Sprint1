@@ -84,13 +84,13 @@ class TableScanImpl : public BaseTableScanImpl {
 
       const auto dc = std::dynamic_pointer_cast<DictionaryColumn<T>>(column);
       if (dc) {
-          auto pos = _scan_dictionary_column(chunk_id, dc);
-          auto target_chunk = std::make_shared<Chunk>();
-          for (ColumnID col {0}; col < _table->col_count(); ++col) {
-            auto new_col = std::make_shared<ReferenceColumn>(_table, col, pos);
-            target_chunk->add_column(new_col);
-          }
-          result_table->emplace_chunk(target_chunk);
+        auto pos = _scan_dictionary_column(chunk_id, dc);
+        auto target_chunk = std::make_shared<Chunk>();
+        for (ColumnID col{0}; col < _table->col_count(); ++col) {
+          auto new_col = std::make_shared<ReferenceColumn>(_table, col, pos);
+          target_chunk->add_column(new_col);
+        }
+        result_table->emplace_chunk(target_chunk);
       }
 
       const auto rc = std::dynamic_pointer_cast<ReferenceColumn>(column);
@@ -119,53 +119,51 @@ class TableScanImpl : public BaseTableScanImpl {
     }
     return pos;
   }
-  std::shared_ptr<PosList> _scan_dictionary_column(const ChunkID chunk_id, const std::shared_ptr<DictionaryColumn<T>> dc) {
+  std::shared_ptr<PosList> _scan_dictionary_column(const ChunkID chunk_id,
+                                                   const std::shared_ptr<DictionaryColumn<T>> dc) {
     const ValueID search_value_id = dc->lower_bound(_search_value);
     const auto pos = std::make_shared<PosList>();
     // check invalid id
 
-    if(search_value_id == INVALID_VALUE_ID) {
+    if (search_value_id == INVALID_VALUE_ID) {
       // -> value not found
       // != < <=  all
-      if(_scan_type == ScanType::OpLessThan ||
-          _scan_type == ScanType::OpLessThanEquals ||
-          _scan_type == ScanType::OpNotEquals){
-        for(ChunkOffset index{0}; index < dc->size(); index++){
-          pos->push_back(RowID {chunk_id, index});
+      if (_scan_type == ScanType::OpLessThan || _scan_type == ScanType::OpLessThanEquals ||
+          _scan_type == ScanType::OpNotEquals) {
+        for (ChunkOffset index{0}; index < dc->size(); index++) {
+          pos->push_back(RowID{chunk_id, index});
         }
       }
-    } else{
+    } else {
       // -> value found
-      if(_search_value == dc->value_by_value_id(search_value_id)){
+      if (_search_value == dc->value_by_value_id(search_value_id)) {
         // -> exact match
-        for(ChunkOffset index{0}; index < dc->size(); index++){
+        for (ChunkOffset index{0}; index < dc->size(); index++) {
           const T& value = dc->get(index);
           if (_op(value, _search_value)) {
-            pos->push_back(RowID {chunk_id, index});
+            pos->push_back(RowID{chunk_id, index});
           }
         }
-      } else{
+      } else {
         // != all
-        if(_scan_type == ScanType::OpNotEquals){
-          for(ChunkOffset index{0}; index < dc->size(); index++){
-            pos->push_back(RowID {chunk_id, index});
+        if (_scan_type == ScanType::OpNotEquals) {
+          for (ChunkOffset index{0}; index < dc->size(); index++) {
+            pos->push_back(RowID{chunk_id, index});
           }
         }
 
         auto op = _op;
         // > operator swap auf >=
-        if(_scan_type == ScanType::OpGreaterThan){
+        if (_scan_type == ScanType::OpGreaterThan) {
           op = operators::get<T>(ScanType::OpGreaterThanEquals);
         }
         // < <= >= normal scan/check
-        if(_scan_type == ScanType::OpGreaterThan ||
-            _scan_type == ScanType::OpLessThan ||
-            _scan_type == ScanType::OpLessThanEquals ||
-            _scan_type == ScanType::OpGreaterThanEquals){
-          for(ChunkOffset index{0}; index < dc->size(); index++){
+        if (_scan_type == ScanType::OpGreaterThan || _scan_type == ScanType::OpLessThan ||
+            _scan_type == ScanType::OpLessThanEquals || _scan_type == ScanType::OpGreaterThanEquals) {
+          for (ChunkOffset index{0}; index < dc->size(); index++) {
             const T& value = dc->get(index);
             if (op(value, _search_value)) {
-              pos->push_back(RowID {chunk_id, index});
+              pos->push_back(RowID{chunk_id, index});
             }
           }
         }
@@ -178,19 +176,19 @@ class TableScanImpl : public BaseTableScanImpl {
     const auto rp = rc->pos_list();
     for (size_t index = 0; index < rc->size(); ++index) {
       const RowID entry = (*rp)[index];
-      const std::shared_ptr<BaseColumn> bc = rc->referenced_table()->get_chunk(entry.chunk_id).get_column(rc->referenced_column_id());
-      const std::shared_ptr<ValueColumn<T>> vc = std::dynamic_pointer_cast<ValueColumn<T>>(bc);
-      const std::shared_ptr<DictionaryColumn<T>> dc = std::dynamic_pointer_cast<DictionaryColumn<T>>(bc);
+      const auto bc = rc->referenced_table()->get_chunk(entry.chunk_id).get_column(rc->referenced_column_id());
+      const auto vc = std::dynamic_pointer_cast<ValueColumn<T>>(bc);
+      const auto dc = std::dynamic_pointer_cast<DictionaryColumn<T>>(bc);
       if (vc) {
         const T& val = vc->values()[entry.chunk_offset];
         if (_op(val, _search_value)) {
           pos->push_back(entry);
         }
-      } else if(dc) {
-          const T& val = dc->get(entry.chunk_offset);
-          if(_op(val, _search_value)) {
-            pos->push_back(entry);
-          }
+      } else if (dc) {
+        const T& val = dc->get(entry.chunk_offset);
+        if (_op(val, _search_value)) {
+          pos->push_back(entry);
+        }
       } else {
         Assert(false, "scan reference: underlying column was neither VC nor DC or the type parameter was incorrect");
       }
