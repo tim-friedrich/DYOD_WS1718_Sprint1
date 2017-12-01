@@ -124,7 +124,7 @@ class TableScanImpl : public BaseTableScanImpl {
     const auto pos = std::make_shared<PosList>();
     // check invalid id
 
-    if(search_value_id == std::numeric_limits<ValueID::base_type>::max()){
+    if(search_value_id == INVALID_VALUE_ID) {
       // -> value not found
       // != < <=  all
       if(_scan_type == ScanType::OpLessThan ||
@@ -178,18 +178,21 @@ class TableScanImpl : public BaseTableScanImpl {
     const auto rp = rc->pos_list();
     for (size_t index = 0; index < rc->size(); ++index) {
       const RowID entry = (*rp)[index];
-      const std::shared_ptr<BaseColumn> bc =
-          rc->referenced_table()->get_chunk(entry.chunk_id).get_column(rc->referenced_column_id());
-
-      const auto vc = std::dynamic_pointer_cast<ValueColumn<T>>(bc);
+      const std::shared_ptr<BaseColumn> bc = rc->referenced_table()->get_chunk(entry.chunk_id).get_column(rc->referenced_column_id());
+      const std::shared_ptr<ValueColumn<T>> vc = std::dynamic_pointer_cast<ValueColumn<T>>(bc);
+      const std::shared_ptr<DictionaryColumn<T>> dc = std::dynamic_pointer_cast<DictionaryColumn<T>>(bc);
       if (vc) {
         const T& val = vc->values()[entry.chunk_offset];
         if (_op(val, _search_value)) {
           pos->push_back(entry);
         }
+      } else if(dc) {
+          const T& val = dc->get(entry.chunk_offset);
+          if(_op(val, _search_value)) {
+            pos->push_back(entry);
+          }
       } else {
-        const auto dc = std::dynamic_pointer_cast<DictionaryColumn<T>>(bc);
-        Assert(dc, "should be a dict column");
+        Assert(false, "scan reference: underlying column was neither VC nor DC or the type parameter was incorrect");
       }
     }
     return pos;
