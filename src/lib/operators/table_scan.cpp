@@ -62,9 +62,20 @@ class TableScanImpl : public BaseTableScanImpl {
 
   std::shared_ptr<const Table> execute() override {
     const auto result_table = std::make_shared<Table>();
-
     for (ColumnID index{0}; index < _table->col_count(); ++index) {
       result_table->add_column_definition(_table->column_name(index), _table->column_type(index));
+    }
+
+    const auto result_chunk = std::make_shared<Chunk>();
+    const auto pos = std::make_shared<PosList>();
+
+    const auto search_column = _table->get_chunk(ChunkID{0}).get_column(_column_id);
+    const auto search_rc = std::dynamic_pointer_cast<ReferenceColumn>(search_column);
+    const auto referenced_table = search_rc ? search_rc->referenced_table() : _table;
+
+    for (ColumnID col{0}; col < _table->col_count(); ++col) {
+      auto new_col = std::make_shared<ReferenceColumn>(referenced_table, col, pos);
+      result_chunk->add_column(new_col);
     }
 
     for (ChunkID chunk_id{0}; chunk_id < _table->chunk_count(); ++chunk_id) {
@@ -73,56 +84,40 @@ class TableScanImpl : public BaseTableScanImpl {
 
       const auto vc = std::dynamic_pointer_cast<ValueColumn<T>>(column);
       if (vc) {
-        auto pos = _scan_value_column(chunk_id, vc);
-        auto target_chunk = std::make_shared<Chunk>();
-        for (ColumnID col{0}; col < _table->col_count(); ++col) {
-          auto new_col = std::make_shared<ReferenceColumn>(_table, col, pos);
-          target_chunk->add_column(new_col);
-        }
-        result_table->emplace_chunk(target_chunk);
+        _scan_value_column(chunk_id, vc, pos);
       }
 
       const auto dc = std::dynamic_pointer_cast<DictionaryColumn<T>>(column);
       if (dc) {
-        auto pos = _scan_dictionary_column(chunk_id, dc);
-        auto target_chunk = std::make_shared<Chunk>();
-        for (ColumnID col{0}; col < _table->col_count(); ++col) {
-          auto new_col = std::make_shared<ReferenceColumn>(_table, col, pos);
-          target_chunk->add_column(new_col);
-        }
-        result_table->emplace_chunk(target_chunk);
+        _scan_dictionary_column(chunk_id, dc, pos);
       }
 
       const auto rc = std::dynamic_pointer_cast<ReferenceColumn>(column);
       if (rc) {
-        auto pos = _scan_reference_column(chunk_id, rc);
-        auto target_chunk = std::make_shared<Chunk>();
-        for (ColumnID col{0}; col < _table->col_count(); ++col) {
-          auto new_col = std::make_shared<ReferenceColumn>(rc->referenced_table(), col, pos);
-          target_chunk->add_column(new_col);
-        }
-        result_table->emplace_chunk(target_chunk);
+        _scan_reference_column(chunk_id, rc, pos);
       }
+
+      Assert(vc || dc || rc, "column type not supported for scan");
     }
 
+    result_table->emplace_chunk(result_chunk);
     return result_table;
   }
 
-  std::shared_ptr<PosList> _scan_value_column(const ChunkID chunk_id, const std::shared_ptr<ValueColumn<T>> vc) {
+  void _scan_value_column(const ChunkID chunk_id, const std::shared_ptr<ValueColumn<T>> vc,
+                          const std::shared_ptr<PosList> pos) {
     const auto& content = vc->values();
-    const auto pos = std::make_shared<PosList>();
     for (ChunkOffset index{0}; index < content.size(); ++index) {
       const T& value = content[index];
       if (_op(value, _search_value)) {
         pos->push_back(RowID{chunk_id, index});
       }
     }
-    return pos;
   }
-  std::shared_ptr<PosList> _scan_dictionary_column(const ChunkID chunk_id,
-                                                   const std::shared_ptr<DictionaryColumn<T>> dc) {
+
+  void _scan_dictionary_column(const ChunkID chunk_id, const std::shared_ptr<DictionaryColumn<T>> dc,
+                               const std::shared_ptr<PosList> pos) {
     const ValueID search_value_id = dc->lower_bound(_search_value);
-    const auto pos = std::make_shared<PosList>();
     // check invalid id
 
     if (search_value_id == INVALID_VALUE_ID) {
@@ -169,10 +164,10 @@ class TableScanImpl : public BaseTableScanImpl {
         }
       }
     }
-    return pos;
   }
-  std::shared_ptr<PosList> _scan_reference_column(const ChunkID chunk_id, const std::shared_ptr<ReferenceColumn> rc) {
-    const auto pos = std::make_shared<PosList>();
+
+  void _scan_reference_column(const ChunkID chunk_id, const std::shared_ptr<ReferenceColumn> rc,
+                              const std::shared_ptr<PosList> pos) {
     const auto rp = rc->pos_list();
     for (size_t index = 0; index < rc->size(); ++index) {
       const RowID entry = (*rp)[index];
@@ -193,7 +188,6 @@ class TableScanImpl : public BaseTableScanImpl {
         Assert(false, "scan reference: underlying column was neither VC nor DC or the type parameter was incorrect");
       }
     }
-    return pos;
   }
 
  protected:
