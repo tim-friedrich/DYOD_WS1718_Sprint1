@@ -125,43 +125,52 @@ class TableScanImpl : public BaseTableScanImpl {
       // != < <=  all
       if (_scan_type == ScanType::OpLessThan || _scan_type == ScanType::OpLessThanEquals ||
           _scan_type == ScanType::OpNotEquals) {
-        for (ChunkOffset index{0}; index < dc->size(); index++) {
-          pos->push_back(RowID{chunk_id, index});
-        }
+        _fill_all(dc, chunk_id, pos);
       }
     } else {
       // -> value found
       if (_search_value == dc->value_by_value_id(search_value_id)) {
         // -> exact match
-        for (ChunkOffset index{0}; index < dc->size(); index++) {
-          const T& value = dc->get(index);
-          if (_op(value, _search_value)) {
-            pos->push_back(RowID{chunk_id, index});
-          }
-        }
+        _scan_av(*dc, chunk_id, _scan_type, search_value_id, *pos);
       } else {
         // != all
         if (_scan_type == ScanType::OpNotEquals) {
-          for (ChunkOffset index{0}; index < dc->size(); index++) {
-            pos->push_back(RowID{chunk_id, index});
-          }
+          _fill_all(dc, chunk_id, pos);
         }
 
-        auto op = _op;
+        auto scan_type = _scan_type;
         // > operator swap auf >=
+        // <= operator swap auf <
         if (_scan_type == ScanType::OpGreaterThan) {
-          op = operators::get<T>(ScanType::OpGreaterThanEquals);
+          scan_type = ScanType::OpGreaterThanEquals;
+        } else if (_scan_type == ScanType::OpLessThanEquals) {
+          scan_type = ScanType::OpLessThan;
         }
+
         // < <= >= normal scan/check
         if (_scan_type == ScanType::OpGreaterThan || _scan_type == ScanType::OpLessThan ||
             _scan_type == ScanType::OpLessThanEquals || _scan_type == ScanType::OpGreaterThanEquals) {
-          for (ChunkOffset index{0}; index < dc->size(); index++) {
-            const T& value = dc->get(index);
-            if (op(value, _search_value)) {
-              pos->push_back(RowID{chunk_id, index});
-            }
-          }
+          _scan_av(*dc, chunk_id, scan_type, search_value_id, *pos);
         }
+      }
+    }
+  }
+
+  void _fill_all(const std::shared_ptr<DictionaryColumn<T>> dc, const ChunkID chunk_id, const std::shared_ptr<PosList> pos) {
+    const ChunkOffset size = dc->size();
+    for (ChunkOffset index{0}; index < size; ++index) {
+      pos->push_back(RowID{chunk_id, index});
+    }
+  }
+
+  void _scan_av(const DictionaryColumn<T>& dc, const ChunkID chunk_id, const ScanType scan_type, const ValueID search_value_id, PosList& pos) {
+    const auto av = dc.attribute_vector();
+    const auto vid_op = operators::get<ValueID>(scan_type);
+    const ChunkOffset size = av->size();
+    for (ChunkOffset index {0}; index < size; ++index) {
+      const ValueID vid = av->get(index);
+      if(vid_op(vid, search_value_id)) {
+        pos.push_back(RowID{chunk_id, index});
       }
     }
   }
