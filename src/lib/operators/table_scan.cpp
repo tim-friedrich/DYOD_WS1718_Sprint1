@@ -84,17 +84,17 @@ class TableScanImpl : public BaseTableScanImpl {
 
       const auto vc = std::dynamic_pointer_cast<ValueColumn<T>>(column);
       if (vc) {
-        _scan_value_column(chunk_id, vc, pos);
+        _scan_value_column(chunk_id, *vc, *pos);
       }
 
       const auto dc = std::dynamic_pointer_cast<DictionaryColumn<T>>(column);
       if (dc) {
-        _scan_dictionary_column(chunk_id, dc, pos);
+        _scan_dictionary_column(chunk_id, *dc, *pos);
       }
 
       const auto rc = std::dynamic_pointer_cast<ReferenceColumn>(column);
       if (rc) {
-        _scan_reference_column(chunk_id, rc, pos);
+        _scan_reference_column(chunk_id, *rc, *pos);
       }
 
       Assert(vc || dc || rc, "column type not supported for scan");
@@ -104,20 +104,19 @@ class TableScanImpl : public BaseTableScanImpl {
     return result_table;
   }
 
-  void _scan_value_column(const ChunkID chunk_id, const std::shared_ptr<ValueColumn<T>> vc,
-                          const std::shared_ptr<PosList> pos) {
-    const auto& content = vc->values();
-    for (ChunkOffset index{0}; index < content.size(); ++index) {
+  inline void _scan_value_column(const ChunkID chunk_id, const ValueColumn<T>& vc, PosList& pos) const {
+    const auto& content = vc.values();
+    const ChunkOffset size = content.size();
+    for (ChunkOffset index{0}; index < size; ++index) {
       const T& value = content[index];
       if (_op(value, _search_value)) {
-        pos->push_back(RowID{chunk_id, index});
+        pos.push_back(RowID{chunk_id, index});
       }
     }
   }
 
-  void _scan_dictionary_column(const ChunkID chunk_id, const std::shared_ptr<DictionaryColumn<T>> dc,
-                               const std::shared_ptr<PosList> pos) {
-    const ValueID search_value_id = dc->lower_bound(_search_value);
+  inline void _scan_dictionary_column(const ChunkID chunk_id, const DictionaryColumn<T>& dc, PosList& pos) const {
+    const ValueID search_value_id = dc.lower_bound(_search_value);
     // check invalid id
 
     if (search_value_id == INVALID_VALUE_ID) {
@@ -129,9 +128,9 @@ class TableScanImpl : public BaseTableScanImpl {
       }
     } else {
       // -> value found
-      if (_search_value == dc->value_by_value_id(search_value_id)) {
+      if (_search_value == dc.value_by_value_id(search_value_id)) {
         // -> exact match
-        _scan_av(*dc, chunk_id, _scan_type, search_value_id, *pos);
+        _scan_av(dc, chunk_id, _scan_type, search_value_id, pos);
       } else {
         // != all
         if (_scan_type == ScanType::OpNotEquals) {
@@ -139,8 +138,8 @@ class TableScanImpl : public BaseTableScanImpl {
         }
 
         auto scan_type = _scan_type;
-        // > operator swap auf >=
-        // <= operator swap auf <
+        // > swap operator to >=
+        // <= swap operator to <
         if (_scan_type == ScanType::OpGreaterThan) {
           scan_type = ScanType::OpGreaterThanEquals;
         } else if (_scan_type == ScanType::OpLessThanEquals) {
@@ -150,52 +149,53 @@ class TableScanImpl : public BaseTableScanImpl {
         // < <= >= normal scan/check
         if (_scan_type == ScanType::OpGreaterThan || _scan_type == ScanType::OpLessThan ||
             _scan_type == ScanType::OpLessThanEquals || _scan_type == ScanType::OpGreaterThanEquals) {
-          _scan_av(*dc, chunk_id, scan_type, search_value_id, *pos);
+          _scan_av(dc, chunk_id, scan_type, search_value_id, pos);
         }
       }
     }
   }
 
-  void _fill_all(const std::shared_ptr<DictionaryColumn<T>> dc, const ChunkID chunk_id, const std::shared_ptr<PosList> pos) {
-    const ChunkOffset size = dc->size();
+  inline void _fill_all(const DictionaryColumn<T>& dc, const ChunkID chunk_id, PosList& pos) const {
+    const ChunkOffset size = dc.size();
     for (ChunkOffset index{0}; index < size; ++index) {
-      pos->push_back(RowID{chunk_id, index});
+      pos.push_back(RowID{chunk_id, index});
     }
   }
 
-  void _scan_av(const DictionaryColumn<T>& dc, const ChunkID chunk_id, const ScanType scan_type, const ValueID search_value_id, PosList& pos) {
+  inline void _scan_av(const DictionaryColumn<T>& dc, const ChunkID chunk_id, const ScanType scan_type,
+                       const ValueID search_value_id, PosList& pos) const {
     const auto av = dc.attribute_vector();
     const auto vid_op = operators::get<ValueID>(scan_type);
     const ChunkOffset size = av->size();
-    for (ChunkOffset index {0}; index < size; ++index) {
+    for (ChunkOffset index{0}; index < size; ++index) {
       const ValueID vid = av->get(index);
-      if(vid_op(vid, search_value_id)) {
+      if (vid_op(vid, search_value_id)) {
         pos.push_back(RowID{chunk_id, index});
       }
     }
   }
 
-  void _scan_reference_column(const ChunkID chunk_id, const std::shared_ptr<ReferenceColumn> rc,
-                              const std::shared_ptr<PosList> pos) {
-    const auto rp = rc->pos_list();
-    for (size_t index = 0; index < rc->size(); ++index) {
-      const RowID entry = (*rp)[index];
-      const auto bc = rc->referenced_table()->get_chunk(entry.chunk_id).get_column(rc->referenced_column_id());
+  inline void _scan_reference_column(const ChunkID chunk_id, const ReferenceColumn& rc, PosList& pos) const {
+    const auto& rp = *rc.pos_list();
+    const size_t size = rc.size();
+    for (size_t index = 0; index < size; ++index) {
+      const RowID entry = rp[index];
+      const auto bc = rc.referenced_table()->get_chunk(entry.chunk_id).get_column(rc.referenced_column_id());
       const auto vc = std::dynamic_pointer_cast<ValueColumn<T>>(bc);
       const auto dc = std::dynamic_pointer_cast<DictionaryColumn<T>>(bc);
       if (vc) {
         const T& val = vc->values()[entry.chunk_offset];
         if (_op(val, _search_value)) {
-          pos->push_back(entry);
+          pos.push_back(entry);
         }
       } else if (dc) {
         const T& val = dc->get(entry.chunk_offset);
         if (_op(val, _search_value)) {
-          pos->push_back(entry);
+          pos.push_back(entry);
         }
-      } else {
-        Assert(false, "scan reference: underlying column was neither VC nor DC or the type parameter was incorrect");
       }
+
+      Assert(vc || dc, "scan reference: unsupported underlying column type or wrong type parameter");
     }
   }
 
