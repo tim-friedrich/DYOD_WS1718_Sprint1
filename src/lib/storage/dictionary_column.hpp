@@ -113,15 +113,13 @@ class DictionaryColumn : public BaseColumn {
   }
 
   void _assign_attribute_vector(const size_t size) {
-    Assert(size < std::numeric_limits<uint64_t>::max(), "Number of attributes out of range");
+    Assert(size < std::numeric_limits<uint32_t>::max(), "Number of attributes out of range");
     if (size < std::numeric_limits<uint8_t>::max()) {
       _attribute_vector = std::make_shared<FittedAttributeVector<uint8_t>>(size);
     } else if (size < std::numeric_limits<uint16_t>::max()) {
       _attribute_vector = std::make_shared<FittedAttributeVector<uint16_t>>(size);
-    } else if (size < std::numeric_limits<uint32_t>::max()) {
-      _attribute_vector = std::make_shared<FittedAttributeVector<uint32_t>>(size);
     } else {
-      _attribute_vector = std::make_shared<FittedAttributeVector<uint64_t>>(size);
+      _attribute_vector = std::make_shared<FittedAttributeVector<uint32_t>>(size);
     }
   }
 
